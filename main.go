@@ -14,7 +14,9 @@ import (
 )
 
 const k = 30
-const initialRating = 500
+const initialRating = 1000
+const noOfPointReductionMatches = 25
+const noOfPointReduction = 40
 
 func main() {
 	file, err := os.Open("matches.csv")
@@ -33,6 +35,7 @@ func main() {
 	}
 
 	ratings := make(map[string]float64)
+	lastPlayedMatch := make(map[string]int)
 
 	for i, record := range records {
 		player1 := record[0]
@@ -47,6 +50,17 @@ func main() {
 		if !ok {
 			ratings[player2] = initialRating
 			player2Rating = initialRating
+		}
+
+		player1LastMatch, exist := lastPlayedMatch[player1]
+		if exist && player1LastMatch < i-noOfPointReductionMatches {
+			ratings[player1] = ratings[player1] - noOfPointReduction*math.Floor(float64(i-player1LastMatch)/noOfPointReductionMatches)
+			player1Rating = ratings[player1]
+		}
+		player2LastMatch, exist := lastPlayedMatch[player2]
+		if exist && player2LastMatch < i-noOfPointReductionMatches {
+			ratings[player2] = ratings[player2] - noOfPointReduction*math.Floor(float64(i-player2LastMatch)/noOfPointReductionMatches)
+			player2Rating = ratings[player2]
 		}
 
 		p1 := 1 / (1 + math.Pow(10, (player2Rating-player1Rating)/400))
@@ -64,11 +78,19 @@ func main() {
 		ratings[player1] = player1Rating + k*(player1Actual-p1)
 		ratings[player2] = player2Rating + k*(player2Actual-p2)
 
-		fmt.Printf("Match %d:", i+1)
-		for player, rating := range ratings {
-			fmt.Printf(" %s: %.2f", player, rating)
+		// fmt.Printf("Match %d:", i+1)
+		// for player, rating := range ratings {
+		// 	fmt.Printf(" %s: %.2f", player, rating)
+		// }
+		// fmt.Println()
+		lastPlayedMatch[player1] = i
+		lastPlayedMatch[player2] = i
+	}
+
+	for player := range ratings {
+		if lastPlayedMatch[player] < len(records)-noOfPointReductionMatches {
+			ratings[player] = ratings[player] - noOfPointReduction*math.Floor(float64(len(records)-lastPlayedMatch[player])/noOfPointReductionMatches)
 		}
-		fmt.Println()
 	}
 
 	// sort the players by rating
